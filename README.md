@@ -37,32 +37,71 @@ Testing across an 8-GPU cluster (2x RTX A4500, 1x RTX 4070 Super, 1x RTX 3080, 4
 
 ---
 
-## ⚙️ How It Works
+## ⚙️ Installation & Legacy Hardware Notice
 
-### 1. `profiler.py` (The Calibration Step)
-Runs a raw TFLOPS matrix stress test on every GPU to generate a cluster weighting. It then iteratively loads a real PyTorch Transformer model into VRAM and exponentially scales the batch size until the GPU throws a `CUDA Out of Memory` error. It combines the compute ratio and VRAM limits to output a mathematically perfect, cluster-wide `GLOBAL_BATCH_SIZE`.
+### Legacy Hardware Support (Pascal / CUDA 6.1)
+Standard pre-compiled PyTorch 2.x binaries **do not support** Pascal architectures (`sm_61`) like the Tesla P4 or GTX 1080. If you try to run PyTorch on these GPUs, it will crash. 
+To run this framework on older hardware, you must build PyTorch from source:
 
-### 2. `AsymmetricDistributedSampler`
-Intercepts the PyTorch DataLoader and partitions the global batch unevenly. If the 4070 Super has 25% of the cluster's compute power, it is fed exactly 25% of the batch.
-
-### 3. `scale_loss_for_asymmetric_ddp()` (The Magic Math)
-If the 4070 Super trains on 64 images and the P4 trains on 2 images, standard DDP will blindly average their gradients 50/50, corrupting the model. We intercept the loss *before* `loss.backward()` and mathematically scale it by `(local_batch_size * world_size) / global_batch_size`. This mathematically tricks PyTorch's native C++ NCCL engine into reducing the true global mean!
+```bash
+git clone --recursive https://github.com/pytorch/pytorch
+cd pytorch
+export TORCH_CUDA_ARCH_LIST="6.1;7.5;8.6;8.9"
+export USE_ROCM=0
+python setup.py install
+```
+### Requirements
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
 ## 🚀 Quick Start
 
 ### 1. Auto-Profile Your Cluster
+First, run the profiler across your nodes. This generates the TFLOPS ratio and VRAM limits required to auto-scale the global batch size.
+
+**On Node 1 (Master):**
 ```bash
-# Run on all nodes via torch.distributed.run
-python -m torch.distributed.run --nproc_per_node=4 --nnodes=2 --node_rank=0 --master_addr="10.0.100.2" --master_port=29500 scripts/profiler.py
+python -m torch.distributed.run --nproc_per_node=<GPUs> --nnodes=2 --node_rank=0 --master_addr="<MASTER_IP>" --master_port=29500 scripts/profiler.py
+```
+
+**On Node 2 (Worker):**
+```bash
+python -m torch.distributed.run --nproc_per_node=<GPUs> --nnodes=2 --node_rank=1 --master_addr="<MASTER_IP>" --master_port=29500 scripts/profiler.py
 ```
 
 ### 2. Run the Benchmark
+Once `cluster_weights_*.json` is generated, run the benchmark to test Naive vs Asymmetric performance!
+
+**On Node 1 (Master):**
 ```bash
-# Run on all nodes to test Naive vs Asymmetric
-python -m torch.distributed.run --nproc_per_node=4 --nnodes=2 --node_rank=0 --master_addr="10.0.100.2" --master_port=29500 scripts/benchmark.py
+python -m torch.distributed.run --nproc_per_node=<GPUs> --nnodes=2 --node_rank=0 --master_addr="<MASTER_IP>" --master_port=29500 scripts/benchmark.py
 ```
 
-### RDMA (RoCEv2) Note:
-If you are running InfiniBand/RoCEv2, ensure you export `NCCL_IB_HCA` and `NCCL_IB_GID_INDEX` so NCCL routes traffic over the correct hardware Queue Pairs!
+**On Node 2 (Worker):**
+```bash
+python -m torch.distributed.run --nproc_per_node=<GPUs> --nnodes=2 --node_rank=1 --master_addr="<MASTER_IP>" --master_port=29500 scripts/benchmark.py
+```
+
+---
+
+## 🌐 Advanced Network Setup (RDMA / RoCEv2)
+If you are running InfiniBand or 100GbE RoCEv2 networks, standard PyTorch/NCCL may pick the wrong physical interface or the wrong IPv4 hardware address (GID Index). To unlock the raw hardware-offloaded speeds, prefix your `torchrun` commands with the following exports:
+
+```bash
+# Enable RDMA (0 = Enable, 1 = Disable to force standard TCP)
+export NCCL_IB_DISABLE=0
+
+# Bind to the correct physical network cards
+export NCCL_SOCKET_IFNAME=enp161s0np0
+export GLOO_SOCKET_IFNAME=enp161s0np0
+
+# Specify the explicit Mellanox Hardware Device & Port
+export NCCL_IB_HCA=mlx5_0:1
+
+# Specify the GID Index containing your IPv4 address (usually 3 for RoCEv2)
+export NCCL_IB_GID_INDEX=3
+```
+*(To find your exact GID Index, run `grep -H "<IP_HEX>" /sys/class/infiniband/*/ports/1/gids/*` on your machine.)*

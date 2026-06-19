@@ -105,3 +105,11 @@ export NCCL_IB_HCA=mlx5_0:1
 export NCCL_IB_GID_INDEX=3
 ```
 *(To find your exact GID Index, run `grep -H "<IP_HEX>" /sys/class/infiniband/*/ports/1/gids/*` on your machine.)*
+
+---
+
+## 🤝 Contributing
+Contributions are extremely welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to submit pull requests or report bugs.
+
+## 📄 License & Authorship
+This project was authored by [Zealot88](https://github.com/Zealot88) and is released under the [MIT License](LICENSE).

@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Auto-generated JSON profiles (should not be version controlled)
+cluster_weights_*.json
+
+# PyTorch/VSCode/Misc
+.vscode/
+.idea/
+*.swp
+*.log

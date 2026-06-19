@@ -95,11 +95,11 @@ If you are running InfiniBand or 100GbE RoCEv2 networks, standard PyTorch/NCCL m
 export NCCL_IB_DISABLE=0
 
 # Bind to the correct physical network cards
-export NCCL_SOCKET_IFNAME=enp161s0np0
-export GLOO_SOCKET_IFNAME=enp161s0np0
+export NCCL_SOCKET_IFNAME=<NETWORK_INTERFACE>
+export GLOO_SOCKET_IFNAME=<NETWORK_INTERFACE>
 
 # Specify the explicit Mellanox Hardware Device & Port
-export NCCL_IB_HCA=mlx5_0:1
+export NCCL_IB_HCA=<MELLANOX_DEVICE_NAME>:1
 
 # Specify the GID Index containing your IPv4 address (usually 3 for RoCEv2)
 export NCCL_IB_GID_INDEX=3

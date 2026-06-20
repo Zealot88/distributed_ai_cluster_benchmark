@@ -60,37 +60,37 @@ pip install -r requirements.txt
 ## 🚀 Quick Start
 
 ### Single-Node Testing
-If you are running everything on a single machine, you don't need to configure master IPs or network cards. PyTorch will automatically use PCIe and NVLink.
+If you are running everything on a single machine, you don't need to configure master IPs.
 
 ```bash
 # 1. Profile the GPUs
-python -m torch.distributed.run --nproc_per_node=<GPUs> --nnodes=1 scripts/profiler.py
+python run.py profile --gpus <NUM_GPUS>
 
 # 2. Run the Benchmark
-python -m torch.distributed.run --nproc_per_node=<GPUs> --nnodes=1 scripts/benchmark.py
+python run.py benchmark --gpus <NUM_GPUS>
 ```
 
 ### Multi-Node Cluster
-If you are syncing multiple machines over a network, you must specify the master node's IP address.
+If you are syncing multiple machines over a network, use the CLI options to specify the node ranks and master IP.
 
 **1. Auto-Profile Your Cluster**
 *(Run on Node 1 Master)*
 ```bash
-python -m torch.distributed.run --nproc_per_node=<GPUs> --nnodes=2 --node_rank=0 --master_addr="<MASTER_IP>" --master_port=29500 scripts/profiler.py
+python run.py profile --gpus 4 --nodes 2 --node-rank 0 --master-addr "<MASTER_IP>"
 ```
 *(Run on Node 2 Worker)*
 ```bash
-python -m torch.distributed.run --nproc_per_node=<GPUs> --nnodes=2 --node_rank=1 --master_addr="<MASTER_IP>" --master_port=29500 scripts/profiler.py
+python run.py profile --gpus 4 --nodes 2 --node-rank 1 --master-addr "<MASTER_IP>"
 ```
 
 **2. Run the Benchmark**
 *(Run on Node 1 Master)*
 ```bash
-python -m torch.distributed.run --nproc_per_node=<GPUs> --nnodes=2 --node_rank=0 --master_addr="<MASTER_IP>" --master_port=29500 scripts/benchmark.py
+python run.py benchmark --gpus 4 --nodes 2 --node-rank 0 --master-addr "<MASTER_IP>"
 ```
 *(Run on Node 2 Worker)*
 ```bash
-python -m torch.distributed.run --nproc_per_node=<GPUs> --nnodes=2 --node_rank=1 --master_addr="<MASTER_IP>" --master_port=29500 scripts/benchmark.py
+python run.py benchmark --gpus 4 --nodes 2 --node-rank 1 --master-addr "<MASTER_IP>"
 ```
 
 ---

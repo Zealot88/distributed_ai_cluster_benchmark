@@ -1,0 +1,49 @@
+import argparse
+import subprocess
+import sys
+import os
+
+def main():
+    parser = argparse.ArgumentParser(description="Asymmetric DDP Cluster Launcher")
+    parser.add_argument("action", choices=["profile", "benchmark"], help="Action to perform: 'profile' to auto-detect weights, 'benchmark' to run training.")
+    parser.add_argument("--gpus", type=int, required=True, help="Number of GPUs on this node")
+    parser.add_argument("--nodes", type=int, default=1, help="Total number of nodes in the cluster (default: 1)")
+    parser.add_argument("--node-rank", type=int, default=0, help="Rank of this specific node (default: 0)")
+    parser.add_argument("--master-addr", type=str, default="127.0.0.1", help="IP address of the master node (Node 0)")
+    parser.add_argument("--master-port", type=str, default="29500", help="Port for NCCL communication")
+    
+    args = parser.parse_args()
+    
+    script_map = {
+        "profile": "scripts/profiler.py",
+        "benchmark": "scripts/benchmark.py"
+    }
+    
+    target_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), script_map[args.action])
+    
+    cmd = [
+        sys.executable, "-m", "torch.distributed.run",
+        f"--nproc_per_node={args.gpus}",
+        f"--nnodes={args.nodes}",
+        f"--node_rank={args.node_rank}",
+        f"--master_addr={args.master_addr}",
+        f"--master_port={args.master_port}",
+        target_script
+    ]
+    
+    print("==================================================")
+    print(f"🚀 Launching Asymmetric DDP: {args.action.upper()}")
+    print(f"🖥️  Node {args.node_rank}/{args.nodes - 1} | GPUs: {args.gpus} | Master: {args.master_addr}:{args.master_port}")
+    print("==================================================\n")
+    
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError:
+        print("\n❌ Process failed. If using RDMA, check your NCCL export flags.")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n🛑 Aborted by user.")
+        sys.exit(0)
+
+if __name__ == "__main__":
+    main()

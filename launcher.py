@@ -36,8 +36,13 @@ def main():
     print(f"🖥️  Node {args.node_rank}/{args.nodes - 1} | GPUs: {args.gpus} | Master: {args.master_addr}:{args.master_port}")
     print("==================================================\n")
     
+    # MKL Fatal Error Fix: Force GNU threading layer for PyTorch multiprocess wrapper
+    env = os.environ.copy()
+    env["MKL_THREADING_LAYER"] = "GNU"
+    env["MKL_SERVICE_FORCE_INTEL"] = "1"
+    
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, env=env, check=True)
     except subprocess.CalledProcessError:
         print("\n❌ Process failed. If using RDMA, check your NCCL export flags.")
         sys.exit(1)

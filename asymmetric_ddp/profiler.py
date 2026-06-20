@@ -90,13 +90,20 @@ def main():
         tflops = profile_compute(device, dtype=target_dtype)
         max_local_batch = profile_vram(device, dtype=target_dtype)
         
-        tflops_tensor = torch.tensor([tflops, max_local_batch], device=device, dtype=torch.float32)
-        gathered = [torch.zeros(2, device=device, dtype=torch.float32) for _ in range(world_size)]
-        dist.all_gather(gathered, tflops_tensor)
+        local_data = {
+            "tflops": tflops,
+            "vram": max_local_batch,
+            "name": torch.cuda.get_device_name(device)
+        }
+        
+        gathered_data = [None for _ in range(world_size)]
+        dist.all_gather_object(gathered_data, local_data)
         
         if rank == 0:
-            scores = [t[0].item() for t in gathered]
-            vrams = [t[1].item() for t in gathered]
+            scores = [d["tflops"] for d in gathered_data]
+            vrams = [d["vram"] for d in gathered_data]
+            names = [d["name"] for d in gathered_data]
+            
             total_tflops = sum(scores)
             weights = [s / total_tflops for s in scores]
             
@@ -109,7 +116,7 @@ def main():
             
             print("\n--- GPU Breakdown ---")
             for i in range(world_size):
-                print(f"Rank {i}: {scores[i]:.2f} TFLOPS | Max Local Batch: {vrams[i]:.0f} | Compute Weight: {weights[i]*100:.1f}%")
+                print(f"Rank {i} [{names[i]}]: {scores[i]:.2f} TFLOPS | Max Local Batch: {vrams[i]:.0f} | Compute Weight: {weights[i]*100:.1f}%")
             print("---------------------\n")
             
             json_path = os.path.join(os.getcwd(), f"cluster_weights_{dtype_str}.json")

@@ -107,6 +107,11 @@ def main():
             print(f"Total Cluster Compute: {total_tflops:.2f} TFLOPS")
             print(f"Optimal Auto-Detected Global Batch Size: {safe_global_batch}")
             
+            print("\n--- GPU Breakdown ---")
+            for i in range(world_size):
+                print(f"Rank {i}: {scores[i]:.2f} TFLOPS | Max Local Batch: {vrams[i]:.0f} | Compute Weight: {weights[i]*100:.1f}%")
+            print("---------------------\n")
+            
             json_path = os.path.join(os.getcwd(), f"cluster_weights_{dtype_str}.json")
             with open(json_path, "w") as f:
                 json.dump({

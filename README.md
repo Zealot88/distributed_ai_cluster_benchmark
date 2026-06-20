@@ -50,9 +50,12 @@ export TORCH_CUDA_ARCH_LIST="6.1;7.5;8.6;8.9"
 export USE_ROCM=0
 python setup.py install
 ```
-### Requirements
+### Requirements & Installation
+To install the package and its global CLI globally:
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/Zealot88/distributed_ai_cluster_benchmark.git
+cd distributed_ai_cluster_benchmark
+pip install -e .
 ```
 
 ---
@@ -64,10 +67,10 @@ If you are running everything on a single machine, you don't need to configure m
 
 ```bash
 # 1. Profile the GPUs
-python run.py profile --gpus <NUM_GPUS>
+asym-ddp profile --gpus <NUM_GPUS>
 
 # 2. Run the Benchmark
-python run.py benchmark --gpus <NUM_GPUS>
+asym-ddp benchmark --gpus <NUM_GPUS>
 ```
 
 ### Multi-Node Cluster
@@ -76,21 +79,21 @@ If you are syncing multiple machines over a network, use the CLI options to spec
 **1. Auto-Profile Your Cluster**
 *(Run on Node 1 Master)*
 ```bash
-python run.py profile --gpus 4 --nodes 2 --node-rank 0 --master-addr "<MASTER_IP>"
+asym-ddp profile --gpus 4 --nodes 2 --node-rank 0 --master-addr "<MASTER_IP>"
 ```
 *(Run on Node 2 Worker)*
 ```bash
-python run.py profile --gpus 4 --nodes 2 --node-rank 1 --master-addr "<MASTER_IP>"
+asym-ddp profile --gpus 4 --nodes 2 --node-rank 1 --master-addr "<MASTER_IP>"
 ```
 
 **2. Run the Benchmark**
 *(Run on Node 1 Master)*
 ```bash
-python run.py benchmark --gpus 4 --nodes 2 --node-rank 0 --master-addr "<MASTER_IP>"
+asym-ddp benchmark --gpus 4 --nodes 2 --node-rank 0 --master-addr "<MASTER_IP>"
 ```
 *(Run on Node 2 Worker)*
 ```bash
-python run.py benchmark --gpus 4 --nodes 2 --node-rank 1 --master-addr "<MASTER_IP>"
+asym-ddp benchmark --gpus 4 --nodes 2 --node-rank 1 --master-addr "<MASTER_IP>"
 ```
 
 ---

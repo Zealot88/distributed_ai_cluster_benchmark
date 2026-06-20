@@ -14,12 +14,12 @@ def main():
     
     args = parser.parse_args()
     
-    script_map = {
-        "profile": "scripts/profiler.py",
-        "benchmark": "scripts/benchmark.py"
+    module_map = {
+        "profile": "asymmetric_ddp.profiler",
+        "benchmark": "asymmetric_ddp.benchmark"
     }
     
-    target_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), script_map[args.action])
+    target_module = module_map[args.action]
     
     cmd = [
         sys.executable, "-m", "torch.distributed.run",
@@ -28,7 +28,7 @@ def main():
         f"--node_rank={args.node_rank}",
         f"--master_addr={args.master_addr}",
         f"--master_port={args.master_port}",
-        target_script
+        "-m", target_module
     ]
     
     print("==================================================")

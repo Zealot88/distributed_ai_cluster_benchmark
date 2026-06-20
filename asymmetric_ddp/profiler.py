@@ -1,13 +1,9 @@
 import os
-import sys
 import time
 import json
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-
-# Add parent directory to path so we can import the asymmetric_ddp package
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class DummyTransformer(nn.Module):
     def __init__(self, d_model=1024, num_layers=12):
@@ -111,8 +107,7 @@ def main():
             print(f"Total Cluster Compute: {total_tflops:.2f} TFLOPS")
             print(f"Optimal Auto-Detected Global Batch Size: {safe_global_batch}")
             
-            # Save the JSON file in the parent directory
-            json_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), f"cluster_weights_{dtype_str}.json")
+            json_path = os.path.join(os.getcwd(), f"cluster_weights_{dtype_str}.json")
             with open(json_path, "w") as f:
                 json.dump({
                     "dtype": dtype_str, 

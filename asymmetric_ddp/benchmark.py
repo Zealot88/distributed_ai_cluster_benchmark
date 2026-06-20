@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 import json
 import torch
@@ -8,9 +7,6 @@ import torch.optim as optim
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, TensorDataset
-
-# Add parent directory to path so we can import the asymmetric_ddp package
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from asymmetric_ddp import AsymmetricDistributedSampler, scale_loss_for_asymmetric_ddp
 
@@ -35,7 +31,7 @@ def run_training_loop(mode, dtype_str, rank, world_size, local_rank, device):
     GLOBAL_BATCH_SIZE = 256
     SEQ_LEN = 512
     
-    json_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), f"cluster_weights_{dtype_str}.json")
+    json_path = os.path.join(os.getcwd(), f"cluster_weights_{dtype_str}.json")
     if os.path.exists(json_path):
         with open(json_path, "r") as f:
             data = json.load(f)

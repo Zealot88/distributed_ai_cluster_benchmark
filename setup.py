@@ -9,10 +9,5 @@ setup(
     install_requires=[
         "torch>=2.0.0",
     ],
-    py_modules=["launcher"],
-    entry_points={
-        "console_scripts": [
-            "asym-ddp=launcher:main",
-        ],
-    },
+    scripts=["asym-ddp"],
 )

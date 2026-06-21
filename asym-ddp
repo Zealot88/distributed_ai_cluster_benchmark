@@ -41,6 +41,7 @@ def main():
     env = os.environ.copy()
     env["MKL_THREADING_LAYER"] = "GNU"
     env["MKL_SERVICE_FORCE_INTEL"] = "1"
+    env["OMP_NUM_THREADS"] = "1"
     
     try:
         subprocess.run(cmd, env=env, check=True)

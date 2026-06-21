@@ -5,10 +5,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as dist
+import warnings
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, TensorDataset
 
 from asymmetric_ddp import AsymmetricDistributedSampler, scale_loss_for_asymmetric_ddp
+
+warnings.filterwarnings("ignore")
 
 class DummyTransformer(nn.Module):
     def __init__(self, d_model=1024, num_layers=12):

@@ -17,43 +17,60 @@ class DummyTransformer(nn.Module):
     def forward(self, x):
         return self.classifier(self.layers(x).mean(dim=1))
 
-def profile_compute(device, dtype, warmup=10, iters=50, matrix_size=8192):
-    a = torch.randn(matrix_size, matrix_size, device=device, dtype=dtype)
-    b = torch.randn(matrix_size, matrix_size, device=device, dtype=dtype)
-    for _ in range(warmup): _ = torch.matmul(a, b)
+def profile_compute(device, dtype=torch.float32, warmup=3, active=10):
+    # Dummy tensor sizes for compute
+    N = 4096
+    A = torch.randn(N, N, device=device, dtype=dtype)
+    B = torch.randn(N, N, device=device, dtype=dtype)
+    
+    # Warmup
+    for _ in range(warmup):
+        torch.matmul(A, B)
     torch.cuda.synchronize(device)
     
-    start = time.time()
-    for _ in range(iters): _ = torch.matmul(a, b)
+    start_event = torch.cuda.Event(enable_timing=True)
+    end_event = torch.cuda.Event(enable_timing=True)
+    
+    start_event.record()
+    for _ in range(active):
+        torch.matmul(A, B)
+    end_event.record()
     torch.cuda.synchronize(device)
     
-    return (2.0 * (matrix_size ** 3) * iters / (time.time() - start)) / 1e12
+    time_ms = start_event.elapsed_time(end_event)
+    ops_per_matmul = 2.0 * N * N * N
+    total_ops = ops_per_matmul * active
+    
+    tflops = (total_ops / (time_ms / 1000.0)) / 1e12
+    return tflops
 
-def profile_vram(device, dtype):
-    model = DummyTransformer().to(device)
-    if dtype != torch.float32:
-        model = model.to(dtype)
-        
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    criterion = nn.CrossEntropyLoss()
+def profile_vram(device, dtype=torch.float32, input_dim=1024, hidden_dim=4096):
+    model = torch.nn.Sequential(
+        torch.nn.Linear(input_dim, hidden_dim),
+        torch.nn.ReLU(),
+        torch.nn.Linear(hidden_dim, hidden_dim),
+        torch.nn.ReLU(),
+        torch.nn.Linear(hidden_dim, input_dim)
+    ).to(device).to(dtype)
     
-    batch = 32
-    max_safe_batch = 32
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    max_safe_batch = 0
+    current_batch = 32
     
-    while batch <= 8192:
+    while True:
         try:
-            x = torch.randn(batch, 512, 1024, device=device, dtype=dtype)
-            y = torch.randint(0, 10, (batch,), device=device)
+            x = torch.randn(current_batch, input_dim, device=device, dtype=dtype)
+            target = torch.randn(current_batch, input_dim, device=device, dtype=dtype)
             
             optimizer.zero_grad()
             out = model(x)
-            loss = criterion(out, y)
+            loss = torch.nn.functional.mse_loss(out, target)
             loss.backward()
             optimizer.step()
             
-            max_safe_batch = batch
-            batch += 32 
-            del x, y, out, loss
+            max_safe_batch = current_batch
+            current_batch += 32
+            
             torch.cuda.empty_cache()
         except RuntimeError as e:
             if "out of memory" in str(e).lower():
@@ -62,14 +79,14 @@ def profile_vram(device, dtype):
             else:
                 raise e
                 
-    del model, optimizer, criterion
-    torch.cuda.empty_cache()
     return max_safe_batch
 
 def main():
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     torch.cuda.set_device(local_rank)
-    dist.init_process_group("nccl")
+    device = torch.device(f"cuda:{local_rank}")
+    
+    dist.init_process_group("nccl", device_id=device)
     
     rank = dist.get_rank()
     world_size = dist.get_world_size()

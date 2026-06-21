@@ -99,14 +99,13 @@ def run_training_loop(mode, dtype_str, rank, world_size, local_rank, device):
         print(f"Result: {tps:.2f} Samples/sec")
 
 def main():
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    torch.cuda.set_device(local_rank)
     dist.init_process_group("nccl")
+    
     rank = dist.get_rank()
     world_size = dist.get_world_size()
-    local_rank = int(os.environ.get("LOCAL_RANK", 0))
-    
-    # CRITICAL: Set the active device to avoid NCCL implicit cuda:0 deadlocks
-    torch.cuda.set_device(local_rank)
-    device = torch.device(f"cuda:{local_rank}")
+    device = torch.cuda.current_device()
     
     if rank == 0:
         print("\n==================================================")

@@ -67,14 +67,13 @@ def profile_vram(device, dtype):
     return max_safe_batch
 
 def main():
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    torch.cuda.set_device(local_rank)
     dist.init_process_group("nccl")
+    
     rank = dist.get_rank()
     world_size = dist.get_world_size()
-    local_rank = int(os.environ.get("LOCAL_RANK", 0))
-    
-    # CRITICAL: Set the active device to avoid NCCL implicit cuda:0 deadlocks during all_gather_object
-    torch.cuda.set_device(local_rank)
-    device = torch.device(f"cuda:{local_rank}")
+    device = torch.cuda.current_device()
     
     dtypes = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
     

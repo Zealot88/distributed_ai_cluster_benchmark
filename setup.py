@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="asymmetric_ddp",
-    version="1.0.0",
+    version="0.1.1",
     description="Asymmetric DDP: Heterogeneous Cluster Benchmark",
     author="Zealot88",
     packages=find_packages(),

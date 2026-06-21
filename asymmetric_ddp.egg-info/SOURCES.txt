@@ -1,6 +1,6 @@
 LICENSE
 README.md
-launcher.py
+asym-ddp
 setup.py
 asymmetric_ddp/__init__.py
 asymmetric_ddp/benchmark.py
@@ -10,6 +10,5 @@ asymmetric_ddp/scaler.py
 asymmetric_ddp.egg-info/PKG-INFO
 asymmetric_ddp.egg-info/SOURCES.txt
 asymmetric_ddp.egg-info/dependency_links.txt
-asymmetric_ddp.egg-info/entry_points.txt
 asymmetric_ddp.egg-info/requires.txt
 asymmetric_ddp.egg-info/top_level.txt

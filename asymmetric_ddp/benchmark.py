@@ -104,7 +104,9 @@ def run_training_loop(mode, dtype_str, rank, world_size, local_rank, device):
 def main():
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     torch.cuda.set_device(local_rank)
-    dist.init_process_group("nccl")
+    device = torch.device(f"cuda:{local_rank}")
+    
+    dist.init_process_group("nccl", device_id=device)
     
     rank = dist.get_rank()
     world_size = dist.get_world_size()

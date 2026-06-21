@@ -93,19 +93,28 @@ def main():
         tflops = profile_compute(device, dtype=target_dtype)
         max_local_batch = profile_vram(device, dtype=target_dtype)
         
-        local_data = {
-            "tflops": tflops,
-            "vram": max_local_batch,
-            "name": torch.cuda.get_device_name(device)
-        }
+        # Bulletproof tensor serialization for names to completely avoid NCCL all_gather_object deadlocks
+        name_str = torch.cuda.get_device_name(device)
+        name_bytes = bytearray(name_str.encode("utf-8"))
+        name_bytes.extend([0] * (256 - len(name_bytes)))
+        name_tensor = torch.tensor(name_bytes, device=device, dtype=torch.uint8)
         
-        gathered_data = [None for _ in range(world_size)]
-        dist.all_gather_object(gathered_data, local_data)
+        gathered_names = [torch.zeros(256, device=device, dtype=torch.uint8) for _ in range(world_size)]
+        dist.all_gather(gathered_names, name_tensor)
+        
+        # Gather TFLOPS and VRAM exactly as before
+        tflops_tensor = torch.tensor([tflops, max_local_batch], device=device, dtype=torch.float32)
+        gathered_stats = [torch.zeros(2, device=device, dtype=torch.float32) for _ in range(world_size)]
+        dist.all_gather(gathered_stats, tflops_tensor)
         
         if rank == 0:
-            scores = [d["tflops"] for d in gathered_data]
-            vrams = [d["vram"] for d in gathered_data]
-            names = [d["name"] for d in gathered_data]
+            scores = [t[0].item() for t in gathered_stats]
+            vrams = [t[1].item() for t in gathered_stats]
+            
+            names = []
+            for t in gathered_names:
+                byte_list = t.cpu().tolist()
+                names.append(bytes(byte_list).decode("utf-8").strip("\x00"))
             
             total_tflops = sum(scores)
             weights = [s / total_tflops for s in scores]
